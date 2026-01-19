@@ -176,7 +176,7 @@
                 <span class="bg-gradient-to-r from-pink-400 to-purple-500 w-2 h-8 rounded"></span>
             </h2>
             <div class="bg-black/40 p-8 rounded-xl overflow-auto border-2 border-white/20 max-h-[600px]">
-                <div id="previewContent" class="space-y-2 flex flex-col items-center"></div>
+                <div id="previewContent" class="inline-block"></div>
             </div>
         </div>
     </div>
@@ -446,28 +446,36 @@
             
             previewEl.classList.remove('hidden');
             
-            let html = '';
+            let html = '<div style="display: inline-block;">';
             state.lines.forEach((line, lineIdx) => {
                 if (line.length === 0) return;
                 
-                html += '<div class="flex gap-2 flex-shrink-0">';
-                line.forEach((letter, letterIdx) => {
-                    html += '<div class="inline-block flex-shrink-0">';
-                    letter.grid.forEach(row => {
-                        html += '<div class="flex">';
-                        row.forEach(cell => {
-                            html += `<div class="w-6 h-6 flex-shrink-0 ${cell ? 'bg-white shadow-lg shadow-white/50' : 'bg-transparent'}"></div>`;
-                        });
-                        html += '</div>';
-                    });
-                    html += '</div>';
+                // Create all 5 rows for this line
+                for (let row = 0; row < 5; row++) {
+                    html += '<div style="display: flex; height: 24px;">';
                     
-                    if (letterIdx < line.length - 1) {
-                        html += '<div class="inline-block flex-shrink-0"><div class="w-6 h-6"></div></div>';
-                    }
-                });
-                html += '</div>';
+                    line.forEach((letter, letterIdx) => {
+                        // Add the letter's pixels for this row
+                        for (let col = 0; col < 3; col++) {
+                            const cell = letter.grid[row][col];
+                            html += `<div style="width: 24px; height: 24px; ${cell ? 'background-color: white; box-shadow: 0 0 10px rgba(255,255,255,0.5);' : ''}"></div>`;
+                        }
+                        
+                        // Add 1-block space between letters (but not after the last letter)
+                        if (letterIdx < line.length - 1) {
+                            html += '<div style="width: 24px; height: 24px;"></div>';
+                        }
+                    });
+                    
+                    html += '</div>';
+                }
+                
+                // Add 1-block vertical space between lines (but not after the last line)
+                if (lineIdx < state.lines.length - 1 && state.lines[lineIdx + 1].length > 0) {
+                    html += '<div style="height: 24px;"></div>';
+                }
             });
+            html += '</div>';
             
             contentEl.innerHTML = html;
         }
