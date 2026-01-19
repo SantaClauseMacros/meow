@@ -446,10 +446,11 @@
             
             previewEl.classList.remove('hidden');
             
-            let html = '<div style="display: inline-block;">';
+            let html = '<div style="display: flex; flex-direction: column; align-items: center; gap: 24px;">';
             state.lines.forEach((line, lineIdx) => {
                 if (line.length === 0) return;
                 
+                html += '<div style="display: inline-block;">';
                 // Create all 5 rows for this line
                 for (let row = 0; row < 5; row++) {
                     html += '<div style="display: flex; height: 24px;">';
@@ -469,11 +470,7 @@
                     
                     html += '</div>';
                 }
-                
-                // Add 1-block vertical space between lines (but not after the last line)
-                if (lineIdx < state.lines.length - 1 && state.lines[lineIdx + 1].length > 0) {
-                    html += '<div style="height: 24px;"></div>';
-                }
+                html += '</div>';
             });
             html += '</div>';
             
