@@ -175,8 +175,9 @@
                 Full Preview
                 <span class="bg-gradient-to-r from-pink-400 to-purple-500 w-2 h-8 rounded"></span>
             </h2>
-            <div class="bg-black/40 p-8 rounded-xl overflow-auto border-2 border-white/20 max-h-[600px] flex justify-center items-center">
-                <div id="previewContent" class="inline-block"></div>
+            <div class="bg-black/40 p-8 rounded-xl overflow-auto border-2 border-white/20 max-h-[600px] flex justify-center items-center relative">
+                <div style="position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background-color: #10b981; z-index: 0;"></div>
+                <div id="previewContent" class="inline-block relative z-10"></div>
             </div>
         </div>
     </div>
