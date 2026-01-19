@@ -478,6 +478,7 @@
         }
 
         function exportDesign() {
+            // Export as JSON
             const data = {
                 version: 1,
                 lines: state.lines
@@ -490,12 +491,55 @@
             a.href = url;
             a.download = 'pixel-letters.json';
             a.click();
+            
+            // Also export as TXT for readability
+            setTimeout(() => {
+                let text = '=== PIXEL LETTER DESIGN ===\n\n';
+                
+                const totalLetters = state.lines.reduce((sum, line) => sum + line.length, 0);
+                const nonEmptyLines = state.lines.filter(line => line.length > 0).length;
+                const totalPixels = state.lines.reduce((sum, line) => 
+                    sum + line.reduce((lineSum, letter) => lineSum + countPixels(letter.grid), 0), 0);
+                const maxWidth = Math.max(...state.lines.map(line => {
+                    if (line.length === 0) return 0;
+                    return line.length * 3 + (line.length - 1) * 1;
+                }), 0);
+                const totalHeight = nonEmptyLines === 0 ? 0 : nonEmptyLines * 5 + (nonEmptyLines - 1) * 1;
+                
+                text += `Total Lines: ${nonEmptyLines}\n`;
+                text += `Total Letters: ${totalLetters}\n`;
+                text += `Total Pixels: ${totalPixels}\n`;
+                text += `Max Width: ${maxWidth} blocks\n`;
+                text += `Total Height: ${totalHeight} blocks\n\n`;
+                
+                state.lines.forEach((line, lineIdx) => {
+                    if (line.length === 0) return;
+                    
+                    const lineWidth = line.length * 3 + (line.length - 1) * 1;
+                    text += `--- Line ${lineIdx + 1} ---\n`;
+                    text += `Text: ${line.map(l => l.char).join('')}\n`;
+                    text += `Width: ${lineWidth} blocks\n\n`;
+                    
+                    line.forEach(letter => {
+                        text += `${letter.char} (${countPixels(letter.grid)} pixels):\n`;
+                        text += letter.grid.map(row => row.map(cell => cell ? '█' : '·').join('')).join('\n');
+                        text += '\n\n';
+                    });
+                });
+                
+                const txtBlob = new Blob([text], { type: 'text/plain' });
+                const txtUrl = URL.createObjectURL(txtBlob);
+                const txtA = document.createElement('a');
+                txtA.href = txtUrl;
+                txtA.download = 'pixel-letters.txt';
+                txtA.click();
+            }, 500);
         }
 
         function importDesign() {
             const input = document.createElement('input');
             input.type = 'file';
-            input.accept = '.json';
+            input.accept = '.json,.txt';
             input.onchange = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -503,10 +547,67 @@
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     try {
-                        const data = JSON.parse(event.target.result);
+                        const content = event.target.result;
                         
-                        if (data.version === 1 && Array.isArray(data.lines)) {
-                            state.lines = data.lines;
+                        // Try JSON first
+                        if (file.name.endsWith('.json')) {
+                            const data = JSON.parse(content);
+                            if (data.version === 1 && Array.isArray(data.lines)) {
+                                state.lines = data.lines;
+                                state.currentLine = 0;
+                                
+                                updateLineSelector();
+                                updateLetterList();
+                                updateStats();
+                                updatePreview();
+                                
+                                alert('Design imported successfully!');
+                                return;
+                            }
+                        }
+                        
+                        // Parse TXT format
+                        const lines = content.split('\n');
+                        const newLines = [];
+                        let currentLine = null;
+                        let currentLetter = null;
+                        let gridRow = 0;
+                        
+                        for (let i = 0; i < lines.length; i++) {
+                            const line = lines[i].trim();
+                            
+                            // Check for line header
+                            if (line.startsWith('--- Line')) {
+                                currentLine = [];
+                                newLines.push(currentLine);
+                                continue;
+                            }
+                            
+                            // Check for letter definition (single character followed by parenthesis)
+                            if (line.length > 0 && line.match(/^[A-Z0-9] \(/)) {
+                                const char = line[0];
+                                currentLetter = {
+                                    char: char,
+                                    grid: Array(5).fill().map(() => Array(3).fill(false))
+                                };
+                                gridRow = 0;
+                                if (currentLine) {
+                                    currentLine.push(currentLetter);
+                                }
+                                continue;
+                            }
+                            
+                            // Parse grid rows
+                            if (currentLetter && gridRow < 5 && (line.includes('█') || line.includes('·'))) {
+                                for (let col = 0; col < 3 && col < line.length; col++) {
+                                    currentLetter.grid[gridRow][col] = line[col] === '█';
+                                }
+                                gridRow++;
+                            }
+                        }
+                        
+                        if (newLines.length > 0) {
+                            state.lines = newLines;
                             state.currentLine = 0;
                             
                             updateLineSelector();
@@ -514,9 +615,9 @@
                             updateStats();
                             updatePreview();
                             
-                            alert('Design imported successfully!');
+                            alert('TXT design imported successfully!');
                         } else {
-                            alert('Invalid file format!');
+                            alert('No valid design found in file!');
                         }
                     } catch (err) {
                         alert('Error reading file: ' + err.message);
