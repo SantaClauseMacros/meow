@@ -1,418 +1,542 @@
-import React, { useState } from 'react';
-import { Download, Trash2, Plus, Copy, RotateCcw, CornerDownLeft } from 'lucide-react';
-
-export default function PixelLetterDraft() {
-  const [lines, setLines] = useState([[]]);
-  const [currentLine, setCurrentLine] = useState(0);
-  const [currentLetter, setCurrentLetter] = useState({
-    char: '',
-    grid: Array(5).fill().map(() => Array(3).fill(false))
-  });
-
-  const togglePixel = (row, col) => {
-    const newGrid = currentLetter.grid.map((r, i) => 
-      i === row ? r.map((c, j) => j === col ? !c : c) : r
-    );
-    setCurrentLetter({ ...currentLetter, grid: newGrid });
-  };
-
-  const addLetter = () => {
-    if (currentLetter.char) {
-      const newLines = [...lines];
-      newLines[currentLine] = [...newLines[currentLine], { ...currentLetter }];
-      setLines(newLines);
-      setCurrentLetter({
-        char: '',
-        grid: Array(5).fill().map(() => Array(3).fill(false))
-      });
-    }
-  };
-
-  const addNewLine = () => {
-    setLines([...lines, []]);
-    setCurrentLine(lines.length);
-  };
-
-  const clearGrid = () => {
-    setCurrentLetter({
-      ...currentLetter,
-      grid: Array(5).fill().map(() => Array(3).fill(false))
-    });
-  };
-
-  const deleteLetter = (lineIdx, letterIdx) => {
-    const newLines = lines.map((line, i) => 
-      i === lineIdx ? line.filter((_, j) => j !== letterIdx) : line
-    );
-    setLines(newLines);
-  };
-
-  const deleteLine = (lineIdx) => {
-    if (window.confirm('Delete this entire line?')) {
-      const newLines = lines.filter((_, i) => i !== lineIdx);
-      if (newLines.length === 0) {
-        setLines([[]]);
-        setCurrentLine(0);
-      } else {
-        setLines(newLines);
-        if (currentLine >= newLines.length) {
-          setCurrentLine(newLines.length - 1);
-        }
-      }
-    }
-  };
-
-  const clearAll = () => {
-    if (window.confirm('Clear everything?')) {
-      setLines([[]]);
-      setCurrentLine(0);
-    }
-  };
-
-  const countPixels = (grid) => {
-    return grid.flat().filter(cell => cell).length;
-  };
-
-  const getTotalLetters = () => {
-    return lines.reduce((sum, line) => sum + line.length, 0);
-  };
-
-  const getTotalPixels = () => {
-    return lines.reduce((sum, line) => 
-      sum + line.reduce((lineSum, letter) => lineSum + countPixels(letter.grid), 0), 0);
-  };
-
-  const getLineWidth = (line) => {
-    if (line.length === 0) return 0;
-    return line.length * 3 + (line.length - 1);
-  };
-
-  const getMaxWidth = () => {
-    return Math.max(...lines.map(line => getLineWidth(line)), 0);
-  };
-
-  const getTotalHeight = () => {
-    const nonEmptyLines = lines.filter(line => line.length > 0).length;
-    if (nonEmptyLines === 0) return 0;
-    return nonEmptyLines * 5 + (nonEmptyLines - 1);
-  };
-
-  const exportDesign = () => {
-    let text = '=== PIXEL LETTER DESIGN ===\n\n';
-    text += `Total Lines: ${lines.filter(l => l.length > 0).length}\n`;
-    text += `Total Letters: ${getTotalLetters()}\n`;
-    text += `Total Pixels: ${getTotalPixels()}\n`;
-    text += `Max Width: ${getMaxWidth()} blocks\n`;
-    text += `Total Height: ${getTotalHeight()} blocks\n\n`;
-    
-    lines.forEach((line, lineIdx) => {
-      if (line.length > 0) {
-        text += `--- Line ${lineIdx + 1} ---\n`;
-        text += `Text: ${line.map(l => l.char).join('')}\n`;
-        text += `Width: ${getLineWidth(line)} blocks\n\n`;
-        
-        line.forEach((letter, letterIdx) => {
-          text += `${letter.char} (${countPixels(letter.grid)} pixels):\n`;
-          text += letter.grid.map(row => row.map(cell => cell ? '█' : '·').join('')).join('\n');
-          text += '\n\n';
-        });
-      }
-    });
-    
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'pixel-letters.txt';
-    a.click();
-  };
-
-  const copyToClipboard = () => {
-    const text = lines.map(line => line.map(l => l.char).join('')).filter(l => l).join('\n');
-    navigator.clipboard.writeText(text);
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-5xl md:text-6xl font-black text-white mb-3 tracking-tight">
-            PIXEL LETTER STUDIO
-          </h1>
-          <p className="text-xl text-purple-200">Design 3×5 Pixel Art Letters</p>
-        </div>
-
-        {/* Stats Bar */}
-        {getTotalLetters() > 0 && (
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 mb-6 border border-white/20">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
-              <div>
-                <div className="text-3xl font-bold text-white">{lines.filter(l => l.length > 0).length}</div>
-                <div className="text-sm text-purple-200">Lines</div>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-white">{getTotalLetters()}</div>
-                <div className="text-sm text-purple-200">Letters</div>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-white">{getTotalPixels()}</div>
-                <div className="text-sm text-purple-200">Total Blocks</div>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-white">{getMaxWidth()}</div>
-                <div className="text-sm text-purple-200">Max Width</div>
-              </div>
-              <div>
-                <div className="text-3xl font-bold text-white">{getTotalHeight()}</div>
-                <div className="text-sm text-purple-200">Total Height</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Editor */}
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-white/20">
-            <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-              <span className="bg-gradient-to-r from-yellow-400 to-orange-500 w-2 h-8 rounded"></span>
-              Design Letter
-            </h2>
-
-            {/* Line Selector */}
-            <div className="mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <label className="text-purple-200 text-sm font-semibold">Current Line:</label>
-                <select 
-                  value={currentLine}
-                  onChange={(e) => setCurrentLine(Number(e.target.value))}
-                  className="bg-white/10 border-2 border-white/20 text-white rounded-lg px-3 py-1 focus:outline-none focus:border-yellow-400"
-                >
-                  {lines.map((_, idx) => (
-                    <option key={idx} value={idx} className="bg-purple-900">
-                      Line {idx + 1} ({lines[idx].length} letters)
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={addNewLine}
-                  className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 shadow-lg transition-all transform hover:scale-105"
-                >
-                  <CornerDownLeft size={16} />
-                  New Line
-                </button>
-              </div>
-            </div>
-            
-            <input
-              type="text"
-              maxLength="1"
-              value={currentLetter.char}
-              onChange={(e) => setCurrentLetter({ ...currentLetter, char: e.target.value.toUpperCase() })}
-              placeholder="Enter letter..."
-              className="w-full mb-6 px-6 py-4 bg-white/10 border-2 border-white/20 text-white rounded-xl text-center text-3xl font-bold placeholder-white/40 focus:outline-none focus:border-yellow-400 transition-all"
-            />
-
-            <div className="flex justify-center mb-6">
-              <div className="inline-block bg-black/30 p-6 rounded-2xl border-2 border-white/20">
-                {currentLetter.grid.map((row, i) => (
-                  <div key={i} className="flex gap-2 mb-2 last:mb-0">
-                    {row.map((cell, j) => (
-                      <button
-                        key={j}
-                        onClick={() => togglePixel(i, j)}
-                        className={`w-16 h-16 rounded-lg transition-all transform hover:scale-105 active:scale-95 ${
-                          cell 
-                            ? 'bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg shadow-orange-500/50' 
-                            : 'bg-white/10 hover:bg-white/20 border-2 border-white/20'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Pixel Count for Current Letter */}
-            <div className="text-center mb-4 text-purple-200 text-sm">
-              Current: {countPixels(currentLetter.grid)} blocks filled
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={addLetter}
-                disabled={!currentLetter.char}
-                className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 shadow-lg transition-all transform hover:scale-105 active:scale-95 disabled:scale-100"
-              >
-                <Plus size={24} />
-                Add to Line {currentLine + 1}
-              </button>
-              <button
-                onClick={clearGrid}
-                className="bg-white/10 hover:bg-white/20 border-2 border-white/20 text-white px-6 py-4 rounded-xl flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95"
-              >
-                <RotateCcw size={20} />
-              </button>
-            </div>
-          </div>
-
-          {/* Letter List */}
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-white/20">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                <span className="bg-gradient-to-r from-blue-400 to-cyan-500 w-2 h-8 rounded"></span>
-                Your Lines
-              </h2>
-              <div className="flex gap-2">
-                {getTotalLetters() > 0 && (
-                  <>
-                    <button
-                      onClick={copyToClipboard}
-                      className="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-2 border border-white/20 transition-all"
-                      title="Copy text"
-                    >
-                      <Copy size={16} />
-                    </button>
-                    <button
-                      onClick={exportDesign}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-lg transition-all transform hover:scale-105"
-                    >
-                      <Download size={16} />
-                      Export
-                    </button>
-                    <button
-                      onClick={clearAll}
-                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-lg transition-all transform hover:scale-105"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-              {getTotalLetters() === 0 ? (
-                <div className="text-center py-16">
-                  <div className="text-6xl mb-4">✨</div>
-                  <p className="text-purple-200 text-lg">No letters yet</p>
-                  <p className="text-purple-300/60 text-sm mt-2">Start designing your first letter!</p>
-                </div>
-              ) : (
-                lines.map((line, lineIdx) => (
-                  line.length > 0 && (
-                    <div key={lineIdx} className="bg-white/5 rounded-xl p-4 border border-white/10">
-                      <div className="flex justify-between items-center mb-3">
-                        <div className="flex items-center gap-3">
-                          <span className="text-purple-200 font-bold">Line {lineIdx + 1}</span>
-                          <span className="text-purple-300/60 text-sm">
-                            {line.length} letters · {getLineWidth(line)} blocks wide
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => deleteLine(lineIdx)}
-                          className="text-red-400 hover:text-red-300 p-1 text-sm"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                      <div className="space-y-2">
-                        {line.map((letter, letterIdx) => (
-                          <div key={letterIdx} className="bg-white/10 backdrop-blur-sm rounded-xl p-3 flex items-center justify-between border border-white/20 hover:bg-white/20 transition-all group">
-                            <div className="flex items-center gap-3">
-                              <div className="text-2xl font-black text-white bg-gradient-to-br from-purple-500 to-pink-500 w-12 h-12 flex items-center justify-center rounded-lg shadow-lg">
-                                {letter.char}
-                              </div>
-                              <div className="bg-black/30 p-2 rounded-lg border border-white/20">
-                                {letter.grid.map((row, i) => (
-                                  <div key={i} className="flex gap-0.5">
-                                    {row.map((cell, j) => (
-                                      <div
-                                        key={j}
-                                        className={`w-3 h-3 rounded-sm ${cell ? 'bg-gradient-to-br from-yellow-400 to-orange-500' : 'bg-white/10'}`}
-                                      />
-                                    ))}
-                                  </div>
-                                ))}
-                              </div>
-                              <div className="text-purple-200 text-sm">
-                                {countPixels(letter.grid)} blocks
-                              </div>
-                            </div>
-                            <button
-                              onClick={() => deleteLetter(lineIdx, letterIdx)}
-                              className="text-red-400 hover:text-red-300 p-2 opacity-0 group-hover:opacity-100 transition-all"
-                            >
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Full Preview */}
-        {getTotalLetters() > 0 && (
-          <div className="mt-6 bg-white/10 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-white/20">
-            <h2 className="text-2xl font-bold text-white mb-4 text-center flex items-center justify-center gap-2">
-              <span className="bg-gradient-to-r from-pink-400 to-purple-500 w-2 h-8 rounded"></span>
-              Full Preview
-              <span className="bg-gradient-to-r from-pink-400 to-purple-500 w-2 h-8 rounded"></span>
-            </h2>
-            <div className="bg-black/40 p-8 rounded-xl overflow-auto border-2 border-white/20 max-h-[600px]">
-              <div className="space-y-2 flex flex-col items-center">
-                {lines.map((line, lineIdx) => (
-                  line.length > 0 && (
-                    <div key={lineIdx} className="flex gap-2 flex-shrink-0">
-                      {line.map((letter, letterIdx) => (
-                        <React.Fragment key={letterIdx}>
-                          <div className="inline-block flex-shrink-0">
-                            {letter.grid.map((row, i) => (
-                              <div key={i} className="flex">
-                                {row.map((cell, j) => (
-                                  <div
-                                    key={j}
-                                    className={`w-6 h-6 flex-shrink-0 ${cell ? 'bg-white shadow-lg shadow-white/50' : 'bg-transparent'}`}
-                                  />
-                                ))}
-                              </div>
-                            ))}
-                          </div>
-                          {letterIdx < line.length - 1 && (
-                            <div className="w-6 flex-shrink-0"></div>
-                          )}
-                        </React.Fragment>
-                      ))}
-                    </div>
-                  )
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      <style jsx>{`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Letter Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
         .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
+            width: 8px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.3);
         }
-      `}</style>
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-5xl md:text-6xl font-black text-white mb-3 tracking-tight">
+                PIXEL LETTER STUDIO
+            </h1>
+            <p class="text-xl text-purple-200">Design 3×5 Pixel Art Letters</p>
+        </div>
+
+        <!-- Stats Bar -->
+        <div id="statsBar" class="bg-white/10 backdrop-blur-md rounded-xl p-4 mb-6 border border-white/20 hidden">
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+                <div>
+                    <div id="statLines" class="text-3xl font-bold text-white">0</div>
+                    <div class="text-sm text-purple-200">Lines</div>
+                </div>
+                <div>
+                    <div id="statLetters" class="text-3xl font-bold text-white">0</div>
+                    <div class="text-sm text-purple-200">Letters</div>
+                </div>
+                <div>
+                    <div id="statBlocks" class="text-3xl font-bold text-white">0</div>
+                    <div class="text-sm text-purple-200">Total Blocks</div>
+                </div>
+                <div>
+                    <div id="statWidth" class="text-3xl font-bold text-white">0</div>
+                    <div class="text-sm text-purple-200">Max Width</div>
+                </div>
+                <div>
+                    <div id="statHeight" class="text-3xl font-bold text-white">0</div>
+                    <div class="text-sm text-purple-200">Total Height</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-6">
+            <!-- Editor -->
+            <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                    <span class="bg-gradient-to-r from-yellow-400 to-orange-500 w-2 h-8 rounded"></span>
+                    Design Letter
+                </h2>
+
+                <!-- Line Selector -->
+                <div class="mb-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <label class="text-purple-200 text-sm font-semibold">Current Line:</label>
+                        <select id="lineSelector" class="bg-white/10 border-2 border-white/20 text-white rounded-lg px-3 py-1 focus:outline-none focus:border-yellow-400">
+                            <option value="0">Line 1 (0 letters)</option>
+                        </select>
+                        <button id="newLineBtn" class="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 shadow-lg transition-all transform hover:scale-105">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 10 4 15 9 20"></polyline>
+                                <path d="M20 4v7a4 4 0 0 1-4 4H4"></path>
+                            </svg>
+                            New Line
+                        </button>
+                    </div>
+                </div>
+                
+                <input 
+                    type="text" 
+                    id="letterInput" 
+                    maxlength="1" 
+                    placeholder="Enter letter..."
+                    class="w-full mb-6 px-6 py-4 bg-white/10 border-2 border-white/20 text-white rounded-xl text-center text-3xl font-bold placeholder-white/40 focus:outline-none focus:border-yellow-400 transition-all uppercase"
+                />
+
+                <div class="flex justify-center mb-6">
+                    <div class="inline-block bg-black/30 p-6 rounded-2xl border-2 border-white/20">
+                        <div id="pixelGrid"></div>
+                    </div>
+                </div>
+
+                <!-- Pixel Count -->
+                <div class="text-center mb-4 text-purple-200 text-sm">
+                    Current: <span id="currentPixels">0</span> blocks filled
+                </div>
+
+                <div class="flex gap-3">
+                    <button id="addLetterBtn" disabled class="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-600 disabled:to-gray-700 text-white px-6 py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 shadow-lg transition-all transform hover:scale-105 active:scale-95 disabled:scale-100">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Add to Line <span id="currentLineNum">1</span>
+                    </button>
+                    <button id="clearGridBtn" class="bg-white/10 hover:bg-white/20 border-2 border-white/20 text-white px-6 py-4 rounded-xl flex items-center gap-2 transition-all transform hover:scale-105 active:scale-95">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                            <path d="M3 3v5h5"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Letter List -->
+            <div class="bg-white/10 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-white/20">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+                        <span class="bg-gradient-to-r from-blue-400 to-cyan-500 w-2 h-8 rounded"></span>
+                        Your Lines
+                    </h2>
+                    <div class="flex gap-2" id="actionButtons" style="display: none;">
+                        <button id="copyBtn" class="bg-white/10 hover:bg-white/20 text-white px-3 py-2 rounded-lg text-sm flex items-center gap-2 border border-white/20 transition-all" title="Copy text">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                        </button>
+                        <button id="exportBtn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-lg transition-all transform hover:scale-105">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Export
+                        </button>
+                        <button id="clearAllBtn" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2 shadow-lg transition-all transform hover:scale-105">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="letterList" class="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                    <div class="text-center py-16">
+                        <div class="text-6xl mb-4">✨</div>
+                        <p class="text-purple-200 text-lg">No letters yet</p>
+                        <p class="text-purple-300/60 text-sm mt-2">Start designing your first letter!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Full Preview -->
+        <div id="fullPreview" class="mt-6 bg-white/10 backdrop-blur-md rounded-2xl p-6 shadow-2xl border border-white/20 hidden">
+            <h2 class="text-2xl font-bold text-white mb-4 text-center flex items-center justify-center gap-2">
+                <span class="bg-gradient-to-r from-pink-400 to-purple-500 w-2 h-8 rounded"></span>
+                Full Preview
+                <span class="bg-gradient-to-r from-pink-400 to-purple-500 w-2 h-8 rounded"></span>
+            </h2>
+            <div class="bg-black/40 p-8 rounded-xl overflow-auto border-2 border-white/20 max-h-[600px]">
+                <div id="previewContent" class="space-y-2 flex flex-col items-center"></div>
+            </div>
+        </div>
     </div>
-  );
-}
+
+    <script>
+        const state = {
+            lines: [[]],
+            currentLine: 0,
+            currentGrid: Array(5).fill().map(() => Array(3).fill(false)),
+            currentChar: ''
+        };
+
+        function initGrid() {
+            const gridEl = document.getElementById('pixelGrid');
+            gridEl.innerHTML = '';
+            
+            for (let i = 0; i < 5; i++) {
+                const row = document.createElement('div');
+                row.className = 'flex gap-2 mb-2 last:mb-0';
+                
+                for (let j = 0; j < 3; j++) {
+                    const cell = document.createElement('button');
+                    cell.className = 'w-16 h-16 rounded-lg transition-all transform hover:scale-105 active:scale-95 bg-white/10 hover:bg-white/20 border-2 border-white/20';
+                    cell.onclick = () => togglePixel(i, j);
+                    row.appendChild(cell);
+                }
+                gridEl.appendChild(row);
+            }
+        }
+
+        function togglePixel(row, col) {
+            state.currentGrid[row][col] = !state.currentGrid[row][col];
+            updateGrid();
+            updatePixelCount();
+        }
+
+        function updateGrid() {
+            const gridEl = document.getElementById('pixelGrid');
+            const rows = gridEl.children;
+            
+            for (let i = 0; i < 5; i++) {
+                const cells = rows[i].children;
+                for (let j = 0; j < 3; j++) {
+                    if (state.currentGrid[i][j]) {
+                        cells[j].className = 'w-16 h-16 rounded-lg transition-all transform hover:scale-105 active:scale-95 bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg shadow-orange-500/50';
+                    } else {
+                        cells[j].className = 'w-16 h-16 rounded-lg transition-all transform hover:scale-105 active:scale-95 bg-white/10 hover:bg-white/20 border-2 border-white/20';
+                    }
+                }
+            }
+        }
+
+        function updatePixelCount() {
+            const count = state.currentGrid.flat().filter(c => c).length;
+            document.getElementById('currentPixels').textContent = count;
+        }
+
+        function countPixels(grid) {
+            return grid.flat().filter(c => c).length;
+        }
+
+        function addLetter() {
+            if (!state.currentChar) return;
+            
+            state.lines[state.currentLine].push({
+                char: state.currentChar,
+                grid: state.currentGrid.map(row => [...row])
+            });
+            
+            state.currentChar = '';
+            state.currentGrid = Array(5).fill().map(() => Array(3).fill(false));
+            
+            document.getElementById('letterInput').value = '';
+            updateGrid();
+            updatePixelCount();
+            updateLetterList();
+            updateStats();
+            updatePreview();
+            updateLineSelector();
+            checkAddButton();
+        }
+
+        function clearGrid() {
+            state.currentGrid = Array(5).fill().map(() => Array(3).fill(false));
+            updateGrid();
+            updatePixelCount();
+        }
+
+        function addNewLine() {
+            state.lines.push([]);
+            state.currentLine = state.lines.length - 1;
+            updateLineSelector();
+            updateLetterList();
+        }
+
+        function deleteLetter(lineIdx, letterIdx) {
+            state.lines[lineIdx].splice(letterIdx, 1);
+            updateLetterList();
+            updateStats();
+            updatePreview();
+            updateLineSelector();
+        }
+
+        function deleteLine(lineIdx) {
+            if (!confirm('Delete this entire line?')) return;
+            
+            state.lines.splice(lineIdx, 1);
+            if (state.lines.length === 0) {
+                state.lines = [[]];
+                state.currentLine = 0;
+            } else if (state.currentLine >= state.lines.length) {
+                state.currentLine = state.lines.length - 1;
+            }
+            
+            updateLineSelector();
+            updateLetterList();
+            updateStats();
+            updatePreview();
+        }
+
+        function clearAll() {
+            if (!confirm('Clear everything?')) return;
+            
+            state.lines = [[]];
+            state.currentLine = 0;
+            updateLineSelector();
+            updateLetterList();
+            updateStats();
+            updatePreview();
+        }
+
+        function updateLineSelector() {
+            const selector = document.getElementById('lineSelector');
+            selector.innerHTML = '';
+            
+            state.lines.forEach((line, idx) => {
+                const option = document.createElement('option');
+                option.value = idx;
+                option.textContent = `Line ${idx + 1} (${line.length} letters)`;
+                if (idx === state.currentLine) option.selected = true;
+                selector.appendChild(option);
+            });
+            
+            document.getElementById('currentLineNum').textContent = state.currentLine + 1;
+        }
+
+        function updateLetterList() {
+            const listEl = document.getElementById('letterList');
+            const totalLetters = state.lines.reduce((sum, line) => sum + line.length, 0);
+            
+            if (totalLetters === 0) {
+                listEl.innerHTML = `
+                    <div class="text-center py-16">
+                        <div class="text-6xl mb-4">✨</div>
+                        <p class="text-purple-200 text-lg">No letters yet</p>
+                        <p class="text-purple-300/60 text-sm mt-2">Start designing your first letter!</p>
+                    </div>
+                `;
+                document.getElementById('actionButtons').style.display = 'none';
+                return;
+            }
+            
+            document.getElementById('actionButtons').style.display = 'flex';
+            
+            let html = '';
+            state.lines.forEach((line, lineIdx) => {
+                if (line.length === 0) return;
+                
+                const lineWidth = line.length * 3 + (line.length - 1);
+                
+                html += `
+                    <div class="bg-white/5 rounded-xl p-4 border border-white/10">
+                        <div class="flex justify-between items-center mb-3">
+                            <div class="flex items-center gap-3">
+                                <span class="text-purple-200 font-bold">Line ${lineIdx + 1}</span>
+                                <span class="text-purple-300/60 text-sm">
+                                    ${line.length} letters · ${lineWidth} blocks wide
+                                </span>
+                            </div>
+                            <button onclick="deleteLine(${lineIdx})" class="text-red-400 hover:text-red-300 p-1 text-sm">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="space-y-2">
+                `;
+                
+                line.forEach((letter, letterIdx) => {
+                    const pixelCount = countPixels(letter.grid);
+                    html += `
+                        <div class="bg-white/10 backdrop-blur-sm rounded-xl p-3 flex items-center justify-between border border-white/20 hover:bg-white/20 transition-all group">
+                            <div class="flex items-center gap-3">
+                                <div class="text-2xl font-black text-white bg-gradient-to-br from-purple-500 to-pink-500 w-12 h-12 flex items-center justify-center rounded-lg shadow-lg">
+                                    ${letter.char}
+                                </div>
+                                <div class="bg-black/30 p-2 rounded-lg border border-white/20">
+                                    ${letter.grid.map(row => `
+                                        <div class="flex gap-0.5">
+                                            ${row.map(cell => `
+                                                <div class="w-3 h-3 rounded-sm ${cell ? 'bg-gradient-to-br from-yellow-400 to-orange-500' : 'bg-white/10'}"></div>
+                                            `).join('')}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <div class="text-purple-200 text-sm">
+                                    ${pixelCount} blocks
+                                </div>
+                            </div>
+                            <button onclick="deleteLetter(${lineIdx}, ${letterIdx})" class="text-red-400 hover:text-red-300 p-2 opacity-0 group-hover:opacity-100 transition-all">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    `;
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+            
+            listEl.innerHTML = html;
+        }
+
+        function updateStats() {
+            const totalLetters = state.lines.reduce((sum, line) => sum + line.length, 0);
+            
+            if (totalLetters === 0) {
+                document.getElementById('statsBar').classList.add('hidden');
+                return;
+            }
+            
+            document.getElementById('statsBar').classList.remove('hidden');
+            
+            const nonEmptyLines = state.lines.filter(line => line.length > 0).length;
+            const totalPixels = state.lines.reduce((sum, line) => 
+                sum + line.reduce((lineSum, letter) => lineSum + countPixels(letter.grid), 0), 0);
+            
+            const maxWidth = Math.max(...state.lines.map(line => {
+                if (line.length === 0) return 0;
+                return line.length * 3 + (line.length - 1);
+            }), 0);
+            
+            const totalHeight = nonEmptyLines === 0 ? 0 : nonEmptyLines * 5 + (nonEmptyLines - 1);
+            
+            document.getElementById('statLines').textContent = nonEmptyLines;
+            document.getElementById('statLetters').textContent = totalLetters;
+            document.getElementById('statBlocks').textContent = totalPixels;
+            document.getElementById('statWidth').textContent = maxWidth;
+            document.getElementById('statHeight').textContent = totalHeight;
+        }
+
+        function updatePreview() {
+            const totalLetters = state.lines.reduce((sum, line) => sum + line.length, 0);
+            const previewEl = document.getElementById('fullPreview');
+            const contentEl = document.getElementById('previewContent');
+            
+            if (totalLetters === 0) {
+                previewEl.classList.add('hidden');
+                return;
+            }
+            
+            previewEl.classList.remove('hidden');
+            
+            let html = '';
+            state.lines.forEach((line, lineIdx) => {
+                if (line.length === 0) return;
+                
+                html += '<div class="flex gap-2 flex-shrink-0">';
+                line.forEach((letter, letterIdx) => {
+                    html += '<div class="inline-block flex-shrink-0">';
+                    letter.grid.forEach(row => {
+                        html += '<div class="flex">';
+                        row.forEach(cell => {
+                            html += `<div class="w-6 h-6 flex-shrink-0 ${cell ? 'bg-white shadow-lg shadow-white/50' : 'bg-transparent'}"></div>`;
+                        });
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                    
+                    if (letterIdx < line.length - 1) {
+                        html += '<div class="w-6 flex-shrink-0"></div>';
+                    }
+                });
+                html += '</div>';
+            });
+            
+            contentEl.innerHTML = html;
+        }
+
+        function checkAddButton() {
+            const btn = document.getElementById('addLetterBtn');
+            btn.disabled = !state.currentChar;
+        }
+
+        function exportDesign() {
+            let text = '=== PIXEL LETTER DESIGN ===\n\n';
+            
+            const totalLetters = state.lines.reduce((sum, line) => sum + line.length, 0);
+            const nonEmptyLines = state.lines.filter(line => line.length > 0).length;
+            const totalPixels = state.lines.reduce((sum, line) => 
+                sum + line.reduce((lineSum, letter) => lineSum + countPixels(letter.grid), 0), 0);
+            const maxWidth = Math.max(...state.lines.map(line => {
+                if (line.length === 0) return 0;
+                return line.length * 3 + (line.length - 1);
+            }), 0);
+            const totalHeight = nonEmptyLines === 0 ? 0 : nonEmptyLines * 5 + (nonEmptyLines - 1);
+            
+            text += `Total Lines: ${nonEmptyLines}\n`;
+            text += `Total Letters: ${totalLetters}\n`;
+            text += `Total Pixels: ${totalPixels}\n`;
+            text += `Max Width: ${maxWidth} blocks\n`;
+            text += `Total Height: ${totalHeight} blocks\n\n`;
+            
+            state.lines.forEach((line, lineIdx) => {
+                if (line.length === 0) return;
+                
+                const lineWidth = line.length * 3 + (line.length - 1);
+                text += `--- Line ${lineIdx + 1} ---\n`;
+                text += `Text: ${line.map(l => l.char).join('')}\n`;
+                text += `Width: ${lineWidth} blocks\n\n`;
+                
+                line.forEach(letter => {
+                    text += `${letter.char} (${countPixels(letter.grid)} pixels):\n`;
+                    text += letter.grid.map(row => row.map(cell => cell ? '█' : '·').join('')).join('\n');
+                    text += '\n\n';
+                });
+            });
+            
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'pixel-letters.txt';
+            a.click();
+        }
+
+        function copyToClipboard() {
+            const text = state.lines.map(line => line.map(l => l.char).join('')).filter(l => l).join('\n');
+            navigator.clipboard.writeText(text);
+        }
+
+        // Event Listeners
+        document.getElementById('letterInput').addEventListener('input', (e) => {
+            state.currentChar = e.target.value.toUpperCase();
+            e.target.value = state.currentChar;
+            checkAddButton();
+        });
+
+        document.getElementById('addLetterBtn').addEventListener('click', addLetter);
+        document.getElementById('clearGridBtn').addEventListener('click', clearGrid);
+        document.getElementById('newLineBtn').addEventListener('click', addNewLine);
+        document.getElementById('lineSelector').addEventListener('change', (e) => {
+            state.currentLine = parseInt(e.target.value);
+            document.getElementById('currentLineNum').textContent = state.currentLine + 1;
+        });
+        document.getElementById('copyBtn').addEventListener('click', copyToClipboard);
+        document.getElementById('exportBtn').addEventListener('click', exportDesign);
+        document.getElementById('clearAllBtn').addEventListener('click', clearAll);
+
+        // Initialize
+        initGrid();
+        updatePixelCount();
+    </script>
+</body>
+</html>
